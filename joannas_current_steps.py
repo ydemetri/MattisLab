@@ -2,9 +2,9 @@ import os
 from pyabf import ABF
 from analyze_abf import CurrentStepsData
 
-ABF_LOCATION = r'C:\Users\mattisj\Desktop\9-Patching\GC adult Scn1a\IC steps'
-CURRENT_VS_APS_OUTPUT_FILE = r'C:\Users\mattisj\Desktop\9-Patching\GC adult Scn1a\current_vs_aps.csv'
-ANALYSIS_OUTPUT_FILE = r'C:\Users\mattisj\Desktop\9-Patching\GC adult Scn1a\IC steps GC adult Scn1a.csv'
+ABF_LOCATION = r'C:\Users\Ydemetri\Documents\Mattis_lab\Mattis_Lab_Data_Analysis\spec\early postnatal Scn1a DG GC'
+CURRENT_VS_APS_OUTPUT_FILE = r'C:\Users\Ydemetri\Documents\Mattis_lab\Mattis_Lab_Data_Analysis\spec\early postnatal Scn1a DG GC\current_vs_aps.csv'
+ANALYSIS_OUTPUT_FILE = r'C:\Users\Ydemetri\Documents\Mattis_lab\Mattis_Lab_Data_Analysis\spec\early postnatal Scn1a DG GC\IC steps EPN Scn1a DG GC.csv'
 
 # RHEOBASE_OUTPUT_FILE = r'C:\Users\mattisj\Desktop\9-Patching\GC adult WT\rheobase.csv'
 
@@ -19,6 +19,7 @@ print('Analyzing the following files:\n{}'.format(abf_files))
 # Gathering data from the abf files
 current_vs_aps_output = {}
 ap_half_width_output = {}
+ap_peak_output = {}
 ap_amplitude_output = {}
 ap_rise_time_output = {}
 ap_threshold_1_output = {}
@@ -42,10 +43,11 @@ for filepath in abf_files:
     ))
 
     # individual AP characteristics
-    ap_half_width_output[filename] = experiment.get_ap_half_width()
+    ap_half_width_output[filename] = experiment.get_ap_half_width_and_peak()[0]
+    ap_peak_output[filename] = experiment.get_ap_half_width_and_peak()[1]
     ap_amplitude_output[filename] = experiment.get_ap_amplitude()
     ap_rise_time_output[filename] = experiment.get_ap_rise_time()
-    ap_threshold_1_output[filename] = experiment.get_ap_threshold_1()
+    ap_threshold_1_output[filename] = experiment.get_ap_threshold()
 
     # characteristics of spike train
     rheobase_output[filename] = experiment.get_rheobase()
@@ -71,11 +73,12 @@ with open(CURRENT_VS_APS_OUTPUT_FILE, 'w') as f:
 
 # Writing the additional analysis to output file
 with open(ANALYSIS_OUTPUT_FILE, 'w') as f:
-    f.write("filename, AP_half_width, AP_amp, AP_rise_time, AP_thresh, rheobase, max_IFF, max_SSFF, SFA10, SFAn\n")
+    f.write("filename, AP_half_width, AP_peak, AP_amp, AP_rise_time, AP_thresh, rheobase, max_IFF, max_SSFF, SFA10, SFAn\n")
     for filename in ap_half_width_output:
-        f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(
+        f.write('{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(
             filename,
             ap_half_width_output[filename],
+            ap_peak_output[filename],
             ap_amplitude_output[filename],
             ap_rise_time_output[filename],
             ap_threshold_1_output[filename],

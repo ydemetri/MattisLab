@@ -366,7 +366,7 @@ class CurrentStepsSweep(Sweep):
         threshold_voltage, threshold_time = self.get_first_ap_threshold()
         first_peak_time = self.get_aps()[0][0]
 
-        return first_peak_time - threshold_time
+        return 1000*(first_peak_time - threshold_time)
 
     @lru_cache(maxsize=1)
     def get_first_ap_threshold(self, threshold=10000):
@@ -388,17 +388,6 @@ class CurrentStepsSweep(Sweep):
                 # we cross the threshold in gradient, and the time it happened
                 return self.output_signal[idx], self.time_steps[idx]
 
-    def get_first_ap_half_width(self):
-        """
-        Full width, half maximum amplitude for first AP in the sweep. Amplitude measured
-        from threshold to peak
-
-        :return: width in sweep time units
-        """
-
-    def show_plot(self):
-        pass
-
 
 class VCTestSweep(Sweep):
     """
@@ -411,9 +400,9 @@ class VCTestSweep(Sweep):
         start_idx = None
         end_idx = None
         for idx, t in enumerate(self.time_steps):
-            if t > voltage_start and start_idx is None:
+            if t >= voltage_start and start_idx is None:
                 start_idx = idx
-            if t > voltage_end and end_idx is None:
+            if t >= voltage_end and end_idx is None:
                 end_idx = idx
 
         # Measure current for the middle half of the driven part of the sweep
@@ -1061,7 +1050,7 @@ class CurrentStepsData(ExperimentData):
 
         return ap_amplitude
 
-    def get_ap_half_width(self, verify=False):
+    def get_ap_half_width_and_peak(self, verify=False):
         """
         AP half-width:
         for first spike obtained at suprathreshold current injection, width
@@ -1132,7 +1121,7 @@ class CurrentStepsData(ExperimentData):
         if verify:
             verification_plot()
 
-        return ap_half_width
+        return 1000*ap_half_width, ap_peak_voltage
 
     def plot_v_vs_i(self, sweep_num):
         """
@@ -1178,85 +1167,87 @@ def get_file_list(abf_location):
     logger.info('Found {} files to analyze'.format(len(abf_files)))
     return abf_files
 
-
+'''
 if __name__ == '__main__':
-    dir = r'.'
-    for filename in get_file_list(dir):
-        abf = ABF(os.path.join(dir, filename))
-        experiment = EToIRatioData(abf, input_signal_channel=2)
-        experiment.average_sweeps()
-        for s in experiment.sweeps:
-            #p = s.find_first_post_synaptic_potential(verify=True)
-            #p = s.find_total_integrated_current(integration_interval=0.02, verify=True)
-            #p = sweep.find_input_peaks(verify=False)
-            p = s.find_post_synaptic_potential(4, verify=True)
-            print(p)
 
-    # abf_files = get_file_list(ABF_LOCATION)
-    # for filename in abf_files:
-    #     logger.info('Filename: {}'.format(filename))
-    #     abf = ABF(filename)
-        # for field in dir(abf):
-        #     print('#################### {}'.format(field))
-        #     exec('print(abf.{})'.format(field))
+    # dir = r'.'
+    # for filename in get_file_list(dir):
+    #     abf = ABF(os.path.join(dir, filename))
+    #     experiment = EToIRatioData(abf, input_signal_channel=2)
+    #     experiment.average_sweeps()
+    #     for s in experiment.sweeps:
+    #         #p = s.find_first_post_synaptic_potential(verify=True)
+    #         #p = s.find_total_integrated_current(integration_interval=0.02, verify=True)
+    #         #p = sweep.find_input_peaks(verify=False)
+    #         p = s.find_post_synaptic_potential(4, verify=True)
+    #         print(p)
 
-        ############################   CURRENT STEPS
-        # experiment = CurrentStepsData(abf)
-        # for sweep in experiment.sweeps:
-        #     sweep.show_plot()
+    abf_files = get_file_list(ABF_LOCATION)
+    for filename in abf_files:
+        logger.info('Filename: {}'.format(filename))
+        abf = ABF(filename)
+        for field in dir(abf):
+            print('#################### {}'.format(field))
+            exec('print(abf.{})'.format(field))
+
+        ###########################   CURRENT STEPS
+        experiment = CurrentStepsData(abf)
+        for sweep in experiment.sweeps:
+            sweep.show_plot()
 
 
-        # rheobase = experiment.get_rheobase(verify=True)
-        # print('Rheobase of {} is {}mV'.format(experiment.filename, rheobase))
-        # exit()
-        #
-        # sfa = experiment.get_spike_frequency_adaptation()
-        # print('SFA is {}'.format(sfa))
+        rheobase = experiment.get_rheobase(verify=True)
+        print('Rheobase of {} is {}mV'.format(experiment.filename, rheobase))
+        exit()
 
-        # max_ssff = experiment.get_max_steady_state_firing_frequency(verify=True)
-        # print('Max steady state firing frequency is {}'.format(max_ssff))
+        sfa = experiment.get_spike_frequency_adaptation()
+        print('SFA is {}'.format(sfa))
 
-        # max_iff = experiment.get_max_instantaneous_firing_frequency()
-        # print('Max instantaneous firing frequency is {}'.format(max_iff))
-        #
-        # ap_threshold_1 = experiment.get_ap_threshold()
-        # print('AP threshold 1 is {}'.format(ap_threshold_1))
-        #
-        # try:
-        #     ap_threshold_2 = experiment.get_ap_threshold_2()
-        #     print('AP threshold 2 is {}'.format(ap_threshold_2))
-        # except NotImplementedError:
-        #     logger.warning("I don't know how to do that")
-        #
-        # ap_half_width = experiment.get_ap_half_width()
-        # print('AP half width is {}'.format(ap_half_width))
-        ############################   \CURRENT STEPS
+        max_ssff = experiment.get_max_steady_state_firing_frequency(verify=True)
+        print('Max steady state firing frequency is {}'.format(max_ssff))
 
-        ############################   VC TEST
-        # experiment = VCTestData(abf)
-        # print('time units: {}, input units: {}, output units: {}'.format(
-        #     experiment.sweeps[0].time_steps_units,
-        #     experiment.sweeps[0].input_signal_units,
-        #     experiment.sweeps[0].output_signal_units
-        # ))
-        # input_resistances = experiment.get_input_resistance()
-        # print('Input resistances: {}'.format(input_resistances))
-        # print('Input resistance is {} {}/{}'.format(
-        #     np.mean(input_resistances),
-        #     experiment.sweeps[0].input_signal_units,
-        #     experiment.sweeps[0].output_signal_units
-        # ))
-        # print('mV / pA is GOhm')
-        ############################   \VC TEST
+        max_iff = experiment.get_max_instantaneous_firing_frequency()
+        print('Max instantaneous firing frequency is {}'.format(max_iff))
 
-        ############################   current clamp gap free
-        # experiment = CurrentClampGapFreeData(abf)
-        # resting_potential = experiment.get_resting_potential()
-        # print('Resting potential is: {} {}'.format(
-        #     resting_potential, experiment.sweeps[0].output_signal_units))
-        # for sweep in experiment.sweeps:
-        #     sweep.show_plot()
-        #     print('Input: {}'.format(sweep.input_signal_units))
-        #     print('Output: {}'.format(sweep.output_signal_units))
+        ap_threshold_1 = experiment.get_ap_threshold()
+        print('AP threshold 1 is {}'.format(ap_threshold_1))
+
+        try:
+            ap_threshold_2 = experiment.get_ap_threshold_2()
+            print('AP threshold 2 is {}'.format(ap_threshold_2))
+        except NotImplementedError:
+            logger.warning("I don't know how to do that")
+
+        ap_half_width = experiment.get_ap_half_width()
+        print('AP half width is {}'.format(ap_half_width))
+        ###########################   \CURRENT STEPS
+
+        ###########################   VC TEST
+        experiment = VCTestData(abf)
+        print('time units: {}, input units: {}, output units: {}'.format(
+            experiment.sweeps[0].time_steps_units,
+            experiment.sweeps[0].input_signal_units,
+            experiment.sweeps[0].output_signal_units
+        ))
+        input_resistances = experiment.get_input_resistance()
+        print('Input resistances: {}'.format(input_resistances))
+        print('Input resistance is {} {}/{}'.format(
+            np.mean(input_resistances),
+            experiment.sweeps[0].input_signal_units,
+            experiment.sweeps[0].output_signal_units
+        ))
+        print('mV / pA is GOhm')
+        ###########################   \VC TEST
+
+        ###########################   current clamp gap free
+        experiment = CurrentClampGapFreeData(abf)
+        resting_potential = experiment.get_resting_potential()
+        print('Resting potential is: {} {}'.format(
+            resting_potential, experiment.sweeps[0].output_signal_units))
+        for sweep in experiment.sweeps:
+            sweep.show_plot()
+            print('Input: {}'.format(sweep.input_signal_units))
+            print('Output: {}'.format(sweep.output_signal_units))
 
         ############################   /current clamp gap free
+'''
