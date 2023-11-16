@@ -237,9 +237,9 @@ def analyze_data():
             final_df.columns = new_col_names
 
             # Calculate mean and stderr
-            final_df['n'] = final_df.count(axis=1)
-            final_df['mean'] = final_df.mean(axis=1)
-            final_df['se'] = final_df.sem(axis=1)
+            final_df['n'] = final_df[new_col_names].count(axis=1)
+            final_df['mean'] = final_df[new_col_names].mean(axis=1)
+            final_df['se'] = final_df[new_col_names].sem(axis=1)
             final_df['ci'] = 1.96 * (final_df['se']/np.sqrt(final_df['n']))
 
             final_df.insert(0, 'Fold Rheobase', folds)
