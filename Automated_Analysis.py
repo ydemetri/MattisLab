@@ -11,10 +11,16 @@ from scipy.stats import ttest_ind
 import math
 import numpy as np
 from matplotlib import pyplot as plt
+import matplotlib
 import seaborn as sns
 import threading
 from collections import defaultdict
 import statsmodels.stats.multitest as multi
+import statsmodels.api as sm 
+from statsmodels.formula.api import ols 
+
+pd.options.mode.chained_assignment = None  # default='warn'
+matplotlib.use('agg')
 
 # f1 -> wt and f2 -> ex
 
@@ -42,37 +48,37 @@ def analyze_data():
             group1 = '$\it{' + group1 + '}$'
             group2 = '$\it{' + group2 + '}$'
 
-    # Get AHP amp and time
+    # Get AHP amp
     bc_input_wt = path + "\\{}\\Brief_current".format(f1)
-    bc_output_wt = path + "\\Results\\{}_ahp.csv".format(f1)
+    bc_output_wt = path + "\\Results\\Calc_{}_afterhyperpolarization.csv".format(f1)
 
     bc_input_ex = path + "\\{}\\Brief_current".format(f2)
-    bc_output_ex = path + "\\Results\\{}_ahp.csv".format(f2)
+    bc_output_ex = path + "\\Results\\Calc_{}_afterhyperpolarization.csv".format(f2)
 
     # Get input resistances
     vc_input_wt = path + "\\{}\\Membrane_test_vc".format(f1)
-    vc_output_wt = path + "\\Results\\{}_input_resistances.csv".format(f1)
+    vc_output_wt = path + "\\Results\\Calc_{}_input_resistance.csv".format(f1)
 
     vc_input_ex = path + "\\{}\\Membrane_test_vc".format(f2)
-    vc_output_ex = path + "\\Results\\{}_input_resistances.csv".format(f2)
+    vc_output_ex = path + "\\Results\\Calc_{}_input_resistance.csv".format(f2)
 
     # Get resting potential
     gf_input_wt = path + "\\{}\\Gap_free".format(f1)
-    gf_output_wt = path + "\\Results\\{}_resting_potential.csv".format(f1)
+    gf_output_wt = path + "\\Results\\Calc_{}_resting_potential.csv".format(f1)
 
     gf_input_ex = path + "\\{}\\Gap_free".format(f2)
-    gf_output_ex = path + "\\Results\\{}_resting_potential.csv".format(f2)
+    gf_output_ex = path + "\\Results\\Calc_{}_resting_potential.csv".format(f2)
 
     # Get current steps vs frequency and characteristics of spike train and characteristics of AP
     cc_input_wt = path + "\\{}\\Current_steps".format(f1)
-    cc_output_wt1 = path + "\\Results\\{}_current_vs_frequency.csv".format(f1)
-    cc_output_wt2 = path + "\\Results\\{}_current_steps.csv".format(f1)
-    cc_output_wt3 = path + "\\Results\\{}_sag.csv".format(f1)
+    cc_output_wt1 = path + "\\Results\\Calc_{}_frequency_vs_current.csv".format(f1)
+    cc_output_wt2 = path + "\\Results\\Calc_{}_current_step_parameters.csv".format(f1)
+    cc_output_wt3 = path + "\\Results\\Calc_{}_attenuation.csv".format(f1)
 
     cc_input_ex = path + "\\{}\\Current_steps".format(f2)
-    cc_output_ex1 = path + "\\Results\\{}_current_vs_frequency.csv".format(f2)
-    cc_output_ex2 = path + "\\Results\\{}_current_steps.csv".format(f2)
-    cc_output_ex3 = path + "\\Results\\{}_sag.csv".format(f2)
+    cc_output_ex1 = path + "\\Results\\Calc_{}_frequency_vs_current.csv".format(f2)
+    cc_output_ex2 = path + "\\Results\\Calc_{}_current_step_parameters.csv".format(f2)
+    cc_output_ex3 = path + "\\Results\\Calc_{}_attenuation.csv".format(f2)
 
     if analysis_type == 'full':
         joannas_brief_current.analyze_bc(bc_input_wt, bc_output_wt)
@@ -83,6 +89,8 @@ def analyze_data():
         joannas_IC_gap_free.get_resting_potential_from_gf(gf_input_ex, gf_output_ex)
         joannas_current_steps.analyze_cc(cc_input_wt, cc_output_wt1, cc_output_wt2, cc_output_wt3)
         joannas_current_steps.analyze_cc(cc_input_ex, cc_output_ex1, cc_output_ex2, cc_output_ex3)
+    
+    print("Producing statistics and figures")
 
     # Read in data we just analyzed
     curr_steps_ex_df = pd.read_csv(cc_output_ex2)
@@ -95,14 +103,14 @@ def analyze_data():
     curr_steps_wt_df["SFA10"] = curr_steps_wt_df["SFA10"].replace("None", np.nan)
     curr_steps_ex_df["SFAn"] = curr_steps_ex_df["SFAn"].replace("None", np.nan)
     curr_steps_wt_df["SFAn"] = curr_steps_wt_df["SFAn"].replace("None", np.nan)
-    curr_steps_ex_df[["SFA10", "SFAn"]] = curr_steps_ex_df[["SFA10", "SFAn"]].apply(pd.to_numeric)
-    curr_steps_wt_df[["SFA10", "SFAn"]] = curr_steps_wt_df[["SFA10", "SFAn"]].apply(pd.to_numeric)
+    curr_steps_ex_df[["SFA10","SFAn"]] = curr_steps_ex_df[["SFA10","SFAn"]].apply(pd.to_numeric)
+    curr_steps_wt_df[["SFA10","SFAn"]] = curr_steps_wt_df[["SFA10","SFAn"]].apply(pd.to_numeric)
 
     ahp_ex_df = pd.read_csv(bc_output_ex)
     ahp_wt_df = pd.read_csv(bc_output_wt)
     # Remove data points with no hyperpolarization
-    ahp_ex_df = ahp_ex_df.loc[~((ahp_ex_df['AHP Amplitude (mV)'] == 0) | (ahp_ex_df['AHP Time (ms)'] == 0) | (ahp_ex_df['AHP Amplitude (mV)'] == 'nan'))]
-    ahp_wt_df = ahp_wt_df.loc[~((ahp_wt_df['AHP Amplitude (mV)'] == 0) | (ahp_wt_df['AHP Time (ms)'] == 0) | (ahp_wt_df['AHP Amplitude (mV)'] == 'nan'))]
+    ahp_ex_df = ahp_ex_df.loc[~((ahp_ex_df['AHP Amplitude (mV)'] == 0) | (ahp_ex_df['AHP Amplitude (mV)'] == 'nan'))]
+    ahp_wt_df = ahp_wt_df.loc[~((ahp_wt_df['AHP Amplitude (mV)'] == 0) | (ahp_wt_df['AHP Amplitude (mV)'] == 'nan'))]
 
     res_ex_df = pd.read_csv(vc_output_ex)
     res_wt_df = pd.read_csv(vc_output_wt)
@@ -110,8 +118,8 @@ def analyze_data():
     restPot_ex_df = pd.read_csv(gf_output_ex)
     restPot_wt_df = pd.read_csv(gf_output_wt)
 
-    combined_ex = pd.concat([curr_steps_ex_df, ahp_ex_df, res_ex_df, restPot_ex_df], ignore_index=True)
-    combined_wt = pd.concat([curr_steps_wt_df, ahp_wt_df, res_wt_df, restPot_wt_df], ignore_index=True)
+    combined_ex = pd.concat([restPot_ex_df, res_ex_df, curr_steps_ex_df, ahp_ex_df], ignore_index=True)
+    combined_wt = pd.concat([restPot_wt_df, res_wt_df, curr_steps_wt_df, ahp_wt_df], ignore_index=True)
 
     # Add label to data (experimental vs wild type)
     combined_ex['Group'] = '{}'.format(f2)
@@ -120,9 +128,15 @@ def analyze_data():
 
     col_names = list(combined_ex.columns.values)
 
+    #Change numbers depending on properties being checked
+    types = ["Intrinsic Property" for i in range(5)]
+    types += ["Repetitive AP Property" for i in range(4)]
+    types += ["Individual AP Property" for i in range(7)]
+    type_idx = 0
+
     # Do t-test for each column and write in file
     feature_stat_data = []
-    stat_cols = ["Measurement", "{}_mean".format(f2), "{}_stderr".format(f2), "{}_n".format(f2),
+    stat_cols = ["Measurement", "Measurement Type", "{}_mean".format(f2), "{}_stderr".format(f2), "{}_n".format(f2),
             "{}_mean".format(f1), "{}_stderr".format(f1), "{}_n".format(f1), "p-value"]
     for col in col_names:
             if col != "filename" and col != "Group":
@@ -131,40 +145,57 @@ def analyze_data():
                 ex_se = 0
                 wt_se = 0
                 p_val = 0
-                if len(ex) != 0 and len(wt) != 0:
+                if len(ex) > 1 and len(wt) > 1:
                     ex_se = ex.std() /  math.sqrt(len(ex))
                     wt_se = wt.std() /  math.sqrt(len(wt))
                     t_stat, p_val = ttest_ind(ex, wt, nan_policy="omit")
-                    feature_stat_data.append([col, ex.mean(), ex_se, len(ex), wt.mean(), wt_se, len(wt), p_val])
+                    feature_stat_data.append([col, types[type_idx], ex.mean(), ex_se, len(ex), wt.mean(), wt_se, len(wt), p_val])
+                    type_idx += 1
 
-                feature_stat_df = pd.DataFrame(feature_stat_data)
-                feature_stat_df.columns = stat_cols
-                bh_test, corrected_p, _, _ = multi.multipletests(feature_stat_df["p-value"], method="fdr_bh") 
-                feature_stat_df["corrected_p"] = corrected_p
-                feature_stat_df.to_csv(path + "\\Results\\statistics.csv", index=False)
-
-                # Make scatter plot for each property
-                plt.close('all')
-                plt.figure(figsize=(10, 16))
-                fig, ax = plt.subplots()
-                ax.set_ylabel("{}".format(col))
-                ax.errorbar('', ex.mean(), yerr=ex_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
-                sns.stripplot(data=full_df, x='Group', y='{}'.format(col), hue='Group', palette={'{}'.format(f1) : 'blue', '{}'.format(f2) : 'red'}, legend=None, ax=ax, jitter=0.2)
-                ax.errorbar('{}'.format(f2), ex.mean(), yerr=ex_se, fmt="_", color="black", capsize=7, markersize=25, markeredgewidth=2, zorder=5)
-                ax.errorbar('{}'.format(f1), wt.mean(), yerr=wt_se, fmt="_", color="black", capsize=7, markersize=25, markeredgewidth=2, zorder=5)
-                ax.set_box_aspect(2/1)
-                ax.errorbar(' ', wt.mean(), yerr=wt_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
-                if col != 'AP Threshold (mV)' and col != 'Vm (mV)':
-                    ax.set_ylim(bottom=0)
+                    # Make scatter plot for each property
+                    plt.close('all')
+                    plt.figure()
+                    fig, ax = plt.subplots(figsize=(8,10))
+                    ax.set_ylabel("{}".format(col), fontsize=48)
+                    ax.errorbar('', ex.mean(), yerr=ex_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
+                    sns.stripplot(data=full_df, x='Group', y='{}'.format(col), hue='Group', palette={'{}'.format(f1) : 'blue', '{}'.format(f2) : 'red'}, legend=None, ax=ax, jitter=0.2, size=10)
+                    ax.errorbar('{}'.format(f2), ex.mean(), yerr=ex_se, fmt="_", color="black", capsize=10, markersize=50, markeredgewidth=6, zorder=5)
+                    ax.errorbar('{}'.format(f1), wt.mean(), yerr=wt_se, fmt="_", color="black", capsize=10, markersize=50, markeredgewidth=6, zorder=5)
+                    ax.set_box_aspect(2/1)
+                    ax.errorbar(' ', wt.mean(), yerr=wt_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
+                    if col not in ['AP Threshold (mV)', 'Vm (mV)', "Velocity Downstroke (mV_per_ms)"]:
+                        ax.set_ylim(bottom=0)
+                    else:
+                        ax.set_ylim(top=0)
+                    ax.spines[['right', 'top']].set_visible(False)
+                    ax.set(xlabel=None)
+                    plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)                     
+                    plt.xticks(ticks=[0,1,2,3], labels=['', group2, group1, '  '], fontsize=40)
+                    ax.tick_params(axis='both', which='major', labelsize=40)
+                    # if col == 'Max Steady-state (Hz)':
+                    #      ax.set_yticks([0, 20, 40, 60, 80])
+                    # if col == '# APs, 1st 100 ms':
+                    #      ax.set_yticks([0, 5, 10, 15])
+                    ax.xaxis.set_tick_params(rotation=45)
+                    plt.tight_layout()
+                    plt.savefig(path + "\\Results\\Plot_{}".format(col))
+                    plt.close('all')
                 else:
-                     ax.set_ylim(top=0)
-                ax.spines[['right', 'top']].set_visible(False)
-                ax.set(xlabel=None)
-                plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)                     
-                plt.xticks(ticks=[0,1,2,3], labels=['', group2, group1, '  '])
+                     type_idx += 1
+    
+    # Correct for multiple comparisons within types of properties
+    feature_stat_df = pd.DataFrame(feature_stat_data)
+    feature_stat_df.columns = stat_cols
+    final_pvals = []
+    bh_test, corrected_p, _, _ = multi.multipletests(feature_stat_df[feature_stat_df["Measurement Type"] == "Intrinsic Property"]["p-value"], method="fdr_bh") 
+    final_pvals += list(corrected_p)
+    bh_test, corrected_p, _, _ = multi.multipletests(feature_stat_df[feature_stat_df["Measurement Type"] == "Repetitive AP Property"]["p-value"], method="fdr_bh") 
+    final_pvals += list(corrected_p)
+    bh_test, corrected_p, _, _ = multi.multipletests(feature_stat_df[feature_stat_df["Measurement Type"] == "Individual AP Property"]["p-value"], method="fdr_bh") 
+    final_pvals += list(corrected_p)
+    feature_stat_df["corrected_p"] = final_pvals
+    feature_stat_df.to_csv(path + "\\Results\\Stats_Group1_vs_Group2.csv", index=False)
 
-                plt.savefig(path + "\\Results\\{}_plot".format(col))
-                plt.close('all')
 
     # Make frequency vs current data for plotting and stats
     def make_cvf_df(file):
@@ -184,7 +215,7 @@ def analyze_data():
         # Calculate mean and stderr
         vals_df['mean'] = vals_df[val_cols].mean(axis=1)
         vals_df['se'] = vals_df[val_cols].sem(axis=1)
-        vals_df['ci'] = 1.96 * (vals_df['se']/np.sqrt(vals_df['n']))
+        #vals_df['ci'] = 1.96 * vals_df['se']
 
         return vals_df
 
@@ -212,7 +243,7 @@ def analyze_data():
                 i += 1
 
             # Save fold-rheobase data
-            c_vs_f_data.to_csv(path + "\\Results\\{}_rheo_vs_frequency.csv".format(name), index=False)
+            c_vs_f_data.to_csv(path + "\\Results\\Calc_{}_frequency_vs_fold_rheobase.csv".format(name), index=False)
             
             # Make fold-rheobase data for plotting (only integer folds, up to 10)
             points = []
@@ -240,7 +271,7 @@ def analyze_data():
             final_df['n'] = final_df[new_col_names].count(axis=1)
             final_df['mean'] = final_df[new_col_names].mean(axis=1)
             final_df['se'] = final_df[new_col_names].sem(axis=1)
-            final_df['ci'] = 1.96 * (final_df['se']/np.sqrt(final_df['n']))
+            #final_df['ci'] = 1.96 * final_df['se']
 
             final_df.insert(0, 'Fold Rheobase', folds)
             
@@ -257,6 +288,8 @@ def analyze_data():
 
         # FDR corrected stats
         num_tests = df_ex.shape[0]
+        if df_ex.shape[0] > df_wt.shape[0]:
+             num_tests = df_wt.shape[0]
         ex_vals = df_ex.filter(regex="Values")
         wt_vals = df_wt.filter(regex="Values")
         stat_data = []
@@ -272,27 +305,181 @@ def analyze_data():
         stats_df.columns = col_names
         bh_test, corrected_p, _, _ = multi.multipletests(stats_df["p-value"], method="fdr_bh")
         stats_df["corrected_p"] = corrected_p
-        stats_df.to_csv(path + "\\Results\\{}_freq_stats.csv".format(x_name), index=False)
+        stats_df.to_csv(path + "\\Results\\Stats_{}_vs_frequency.csv".format(x_name), index=False)
 
 
         # Make freq plot
-        fig, ax = plt.subplots()
-        ax.plot(df_wt[x_name], df_wt['mean'], color="darkcyan", label=group1)
+        fig, ax = plt.subplots(figsize=(10,10))
+        ax.plot(df_wt[x_name], df_wt['mean'], color="blue", label=group1)
         x_label = x_name
         if x_name == 'Current':
             x_label += ' (pA)'
-        ax.set_xlabel(x_label)
-        ax.set_ylabel("Frequency (Hz)")
-        ax.fill_between(df_wt[x_name], (df_wt['mean']-df_wt['ci']), (df_wt['mean']+df_wt['ci']), facecolor='b', alpha=0.3)
-        ax.plot(df_ex[x_name], df_ex['mean'], color='firebrick', label=group2)
-        ax.fill_between(df_ex[x_name], (df_ex['mean']-df_ex['ci']), (df_ex['mean']+df_ex['ci']), facecolor='r', alpha=0.3)
-        ax.legend()
-        ax.set_title("{} vs Frequency of Action Potentials".format(x_name))
-        plt.savefig(path + "\\Results\\{}_vs_frequency_plot".format(x_name))
+        ax.set_xlabel(x_label, fontsize=48)
+        ax.set_ylabel("Frequency (Hz)", fontsize=48)
+        ax.fill_between(df_wt[x_name], (df_wt['mean']-df_wt['se']), (df_wt['mean']+df_wt['se']), facecolor='b', alpha=0.3)
+        ax.plot(df_ex[x_name], df_ex['mean'], color='red', label=group2)
+        ax.fill_between(df_ex[x_name], (df_ex['mean']-df_ex['se']), (df_ex['mean']+df_ex['se']), facecolor='r', alpha=0.3)
+        ax.spines[['right', 'top']].set_visible(False)
+        ax.tick_params(axis='both', which='major', labelsize=40)
+        #ax.set_yticks([0, 5, 10, 15, 20, 25, 30, 35, 40])
+        if x_name != 'Current':
+             ax.set_xticks([2, 4, 6, 8, 10])
+        #ax.legend()
+        #ax.set_title("{} vs Frequency of Action Potentials".format(x_name))
+        plt.tight_layout()
+        plt.savefig(path + "\\Results\\Plot_{}_vs_frequency".format(x_name))
         plt.close('all')
 
     plot_and_stats(freq_df_ex, freq_df_wt, "Current")
     plot_and_stats(rheo_df_ex, rheo_df_wt, "Fold Rheobase")
+
+    # Attenuation plot and stats
+    group2 = pd.read_csv(cc_output_ex3, index_col=False)
+    group1 = pd.read_csv(cc_output_wt3, index_col=False)
+
+    group1_data = group1.filter(regex='Value')
+    group2_data = group2.filter(regex='Value')
+    group1_data = group1_data[group1_data.columns[group1_data.count() >= 10]] # Only using data points with 10 or more APs
+    group2_data = group2_data[group2_data.columns[group2_data.count() >= 10]]
+    g1_val_cols = group1_data.columns
+    g2_val_cols = group2_data.columns
+    peak_anova_res = np.nan
+    if group1_data.shape[0] >= 10 and group2_data.shape[0] >= 10:
+        group1['mean'] = group1_data[g1_val_cols].mean(axis=1)
+        group1['sem'] = group1_data[g1_val_cols].sem(axis=1)
+        group1['n'] = group1_data[g1_val_cols].count(axis=1)
+        group2['mean'] = group2_data[g2_val_cols].mean(axis=1)
+        group2['sem'] = group2_data[g2_val_cols].sem(axis=1)
+        group2['n'] = group2_data[g2_val_cols].count(axis=1)
+        group1["AP_num"] = [i for i in range(1, group1_data.shape[0] + 1)]
+        group2["AP_num"] = [i for i in range(1, group2_data.shape[0] + 1)]
+
+        # Attenuation FDR corrected stats
+        num_tests = 10
+        stat_data = []
+        col_names = ["AP Number", "{}_mean".format(f2), "{}_stderr".format(f2), "{}_n".format(f2),
+                            "{}_mean".format(f1), "{}_stderr".format(f1), "{}_n".format(f1), "p-value"]
+        for i in range(num_tests):
+            t_stat, p_val = ttest_ind(np.array(group2_data.iloc[i]), np.array(group1_data.iloc[i]), nan_policy="omit") #set equal_var to false to use Welch's test (unequal variances)
+            if not np.isnan(p_val):
+                stat_data.append([group2["AP_num"].iloc[i], group2['mean'].iloc[i], group2['sem'].iloc[i], group2['n'].iloc[i], 
+                            group1['mean'].iloc[i], group1['sem'].iloc[i], group1['n'].iloc[i], p_val])
+
+        stats_df = pd.DataFrame(stat_data)
+        stats_df.columns = col_names
+        bh_test, corrected_p, _, _ = multi.multipletests(stats_df["p-value"], method="fdr_bh")
+        stats_df["corrected_p"] = corrected_p
+        stats_df.to_csv(path + "\\Results\\Stats_AP_Num_vs_Peak.csv", index=False)
+    
+        ap_num = [i for i in range(1,11)]
+        fig, ax = plt.subplots(figsize=(10,10))
+        ax.plot(ap_num, group1['mean'].iloc[:10], color="blue")
+        ax.set_xlabel("AP Number", fontsize=48)
+        ax.set_ylabel("AP Peak (mV)", fontsize=48)
+        ax.fill_between(ap_num, (group1['mean'].iloc[:10]-group1['sem'].iloc[:10]),
+                            (group1['mean'].iloc[:10]+group1['sem'].iloc[:10]), facecolor='b', alpha=0.3)
+        ax.plot(ap_num, group2['mean'].iloc[:10], color='red')
+        ax.fill_between(ap_num, (group2['mean'].iloc[:10]-group2['sem'].iloc[:10]),
+                            (group2['mean'].iloc[:10]+group2['sem'].iloc[:10]), facecolor='r', alpha=0.3)
+        ax.spines[['right', 'top']].set_visible(False)
+        ax.tick_params(axis='both', which='major', labelsize=40)
+        ax.set_xticks([0,5,10])
+        #ax.set_yticks([15, 20, 25, 30, 35, 40])
+        plt.tight_layout()
+        plt.savefig(path + "\\Results\\Plot_AP_Num_vs_Peak")
+        plt.close('all')
+
+        # AP Num vs Peak ANOVA
+        g1 = group1_data[:10]
+        g2 = group2_data[:10]
+        g2['Genotype'] = f2
+        g1['Genotype'] = f1
+        g1['AP_num'] = [i for i in range(1, g1.shape[0] + 1)]
+        g2['AP_num'] = [i for i in range(1, g2.shape[0] + 1)]
+        peak_anova_df = pd.concat([g2,g1], ignore_index=True)
+        cols = []
+        for col in peak_anova_df.columns:
+            if "Value" in col:
+                cols.append(col)
+        ap_nums = []
+        peaks = []
+        genos = []
+        for i in range(len(cols)):
+            ap_nums += list(peak_anova_df['AP_num'])
+            peaks += list(peak_anova_df[cols[i]])
+            genos += list(peak_anova_df['Genotype'])
+        data = {'AP_num' : ap_nums, 'Peak' : peaks, 'Genotype' : genos}
+        final_peak_df = pd.DataFrame(data)
+        final_peak_df = final_peak_df.dropna()
+
+        peak_model = ols('Peak ~ C(AP_num) + C(Genotype) + C(AP_num):C(Genotype)', data=final_peak_df).fit() 
+        peak_result = sm.stats.anova_lm(peak_model, typ=2)
+        peak_result.columns = ['sum_squares','df','F','p-value']
+        peak_result.index = ['AP Number','Genotype','Interaction','Residual']
+        peak_anova_res = peak_result
+
+    # Two-way ANOVAs
+
+    #Current vs frequency ANOVA
+    freq_df_ex['Genotype'] = f2
+    freq_df_wt['Genotype'] = f1
+    curr_anova_df = pd.concat([freq_df_ex,freq_df_wt], ignore_index=True)
+    curr_anova_df = curr_anova_df[curr_anova_df['Current'] > 0]
+    num_cells = 0
+    for col in curr_anova_df.columns:
+         if "Value" in col:
+              num_cells += 1
+    currs = []
+    freqs = []
+    genos = []
+    for i in range(num_cells):
+         currs += list(curr_anova_df['Current'])
+         freqs += list(curr_anova_df['Values_{}'.format(i)])
+         genos += list(curr_anova_df['Genotype'])
+    data = {'Current' : currs, 'Frequency' : freqs, 'Genotype' : genos}
+    final_curr_df = pd.DataFrame(data)
+    final_curr_df = final_curr_df.dropna()
+
+    curr_model = ols('Frequency ~ C(Current) + C(Genotype) + C(Current):C(Genotype)', data=final_curr_df).fit() 
+    curr_result = sm.stats.anova_lm(curr_model, typ=2)
+    curr_result.columns = ['sum_squares','df','F','p-value']
+    curr_result.index = ['Current','Genotype','Interaction','Residual']
+
+
+    # Fold Rheobase vs frequency ANOVA
+    rheo_df_ex['Genotype'] = f2
+    rheo_df_wt['Genotype'] = f1
+    rheo_anova_df = pd.concat([rheo_df_ex, rheo_df_wt], ignore_index=True)
+    num_cells = 0
+    for col in rheo_anova_df.columns:
+         if "Value" in col:
+              num_cells += 1
+    rheos = []
+    freqs = []
+    genos = []
+    for i in range(num_cells):
+         rheos += list(rheo_anova_df['Fold Rheobase'])
+         freqs += list(rheo_anova_df['Values_{}'.format(i)])
+         genos += list(rheo_anova_df['Genotype'])
+    rheo_data = {'Fold_Rheobase' : rheos, 'Frequency' : freqs, 'Genotype' : genos}
+    final_rheo_df = pd.DataFrame(rheo_data)
+    final_rheo_df = final_rheo_df.dropna()
+
+    rheo_model = ols('Frequency ~ C(Fold_Rheobase) + C(Genotype) + C(Fold_Rheobase):C(Genotype)', data=final_rheo_df).fit() 
+    rheo_result = sm.stats.anova_lm(rheo_model, typ=2)
+    rheo_result.columns = ['sum_squares','df','F','p-value']
+    rheo_result.index = ['Fold Rheobase','Genotype','Interaction','Residual']
+    
+
+    #Save ANOVA results
+    dfs = [curr_result, rheo_result]
+    if not np.isnan(peak_anova_res):
+         dfs.append(peak_anova_res)
+    with open(path + "\\Results\\Stats_ANOVAs.csv",'w+') as f:
+        for df in dfs:
+            df.to_csv(f,lineterminator='\n')
+            f.write("\n\n\n\n")
+
 
     global finished
     finished = True

@@ -14,6 +14,8 @@ def get_resting_potential_from_gf(ABF_LOCATION, IC_GAP_FREE_OUTPUT_FILE):
     # Print the files we're analyzing as a sanity check
     print('Analyzing the following files:\n{}'.format(abf_files))
 
+    print("Extracting resting potential")
+
     # Gathering data from the abf files
     resting_potential_output = {}
 

@@ -132,7 +132,7 @@ def time_constant(t, v, i, start, end, max_fit_end=None,
     return 1. / inv_tau
 
 
-def sag(t, v, i, start, end, peak_width=0.005, baseline_interval=0.03):
+def sag(t, v, i, start, end): #, peak_width=0.005, baseline_interval=0.03):
     """Calculate the sag in a hyperpolarizing voltage response.
 
     Parameters
@@ -144,11 +144,11 @@ def sag(t, v, i, start, end, peak_width=0.005, baseline_interval=0.03):
     sag : fraction that membrane potential relaxes back to baseline
     """
     v_peak, peak_index = voltage_deflection(t, v, i, start, end, "min")
-    v_peak_avg = tsu.average_voltage(v, t, start=t[peak_index] - peak_width / 2.,
-                                 end=t[peak_index] + peak_width / 2.)
-    v_baseline = baseline_voltage(t, v, start, baseline_interval=baseline_interval)
-    v_steady = tsu.average_voltage(v, t, start=end - baseline_interval, end=end)
-    sag = (v_peak_avg - v_steady) / (v_peak_avg - v_baseline)
+    # v_peak_avg = tsu.average_voltage(v, t, start=t[peak_index] - peak_width / 2.,
+    #                              end=t[peak_index] + peak_width / 2.)
+    # v_baseline = baseline_voltage(t, v, start, baseline_interval=baseline_interval)
+    v_steady = tsu.average_voltage(v, t, start=end - 0.1, end=end)
+    sag =  v_steady / v_peak   #(v_peak - v_steady) / (v_peak - v_baseline)
 
     return sag
 

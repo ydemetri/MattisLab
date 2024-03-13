@@ -13,6 +13,8 @@ def analyze_bc(ABF_LOCATION, ANALYSIS_OUTPUT_FILE):
     # Print the files we're analyzing as a sanity check
     print('Analyzing the following files:\n{}'.format(abf_files))
 
+    print('Extracting AHP')
+
     # Gathering data from the abf files
     ahp_output = {}
     ahp_time_output = {}
@@ -24,17 +26,16 @@ def analyze_bc(ABF_LOCATION, ANALYSIS_OUTPUT_FILE):
         filename = os.path.basename(filepath)
         print('Analyzing {}'.format(filename))
 
-        print('{} contains {} sweeps'.format(filename, len(experiment.sweeps)))
+        # print('{} contains {} sweeps'.format(filename, len(experiment.sweeps)))
 
         ahp_output[filename], ahp_time_output[filename] = experiment.get_ahp_amplitude_and_time()
 
 
     # Writing the additional analysis to output file
     with open(ANALYSIS_OUTPUT_FILE, 'w') as f:
-        f.write("filename,AHP Amplitude (mV),AHP Time (ms)\n")
+        f.write("filename,AHP Amplitude (mV)\n")
         for filename in ahp_output:
-            f.write('{},{},{}\n'.format(
+            f.write('{},{}\n'.format(
                 filename,
-                ahp_output[filename],
-                ahp_time_output[filename]
+                ahp_output[filename]
             ))
