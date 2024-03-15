@@ -1416,6 +1416,8 @@ class CurrentStepsData(ExperimentData):
         return curr_sag
     
     def get_attenuation(self):
+        if len(self.sweeps) < 24:
+            return [np.nan], [np.nan]
         sweep = self.sweeps[23]
         aps = sweep.get_aps()
         peaks = [peak[1] for peak in aps]

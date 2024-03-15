@@ -343,7 +343,8 @@ def analyze_data():
     group2_data = group2_data[group2_data.columns[group2_data.count() >= 10]]
     g1_val_cols = group1_data.columns
     g2_val_cols = group2_data.columns
-    peak_anova_res = np.nan
+    peak_anova_res = None
+    peak_anova_exists = False
     if group1_data.shape[0] >= 10 and group2_data.shape[0] >= 10:
         group1['mean'] = group1_data[g1_val_cols].mean(axis=1)
         group1['sem'] = group1_data[g1_val_cols].sem(axis=1)
@@ -417,6 +418,7 @@ def analyze_data():
         peak_result.columns = ['sum_squares','df','F','p-value']
         peak_result.index = ['AP Number','Genotype','Interaction','Residual']
         peak_anova_res = peak_result
+        peak_anova_exists = True
 
     # Two-way ANOVAs
 
@@ -473,7 +475,7 @@ def analyze_data():
 
     #Save ANOVA results
     dfs = [curr_result, rheo_result]
-    if not np.isnan(peak_anova_res):
+    if peak_anova_exists:
          dfs.append(peak_anova_res)
     with open(path + "\\Results\\Stats_ANOVAs.csv",'w+') as f:
         for df in dfs:
