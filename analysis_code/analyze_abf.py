@@ -16,6 +16,7 @@ from sys import float_info
 from .subthresh_features import time_constant
 from .subthresh_features import sag
 from .subthresh_features import baseline_voltage
+from scipy import ndimage
 
 ABF_FILE_EXTENSION = '.abf'
 EXPERIMENT_TYPE_CURRENT_STEPS = 'current_steps'
@@ -386,11 +387,6 @@ class CurrentStepsSweep(Sweep):
         isi_1 = aps[1][0] - aps[0][0]
         isi_10 = aps[10][0] - aps[9][0]
         isi_n = aps[-1][0] - aps[-2][0]
-
-        # all_isi = []
-        # for i in range(len(aps) - 1):
-        #     all_isi.append(aps[i + 1][0] - aps[i][0])
-
 
         return isi_1/isi_10, isi_1/isi_n
 
@@ -994,6 +990,31 @@ class CurrentStepsData(ExperimentData):
             plt.gca().get_yaxis().set_visible(False)
             plt.savefig("max_ss_{}.png".format(sweep.sweep_name))
 
+        def group_pv_cells(sweep):
+            aps = sweep.get_aps()
+            all_isi = []
+            burst_length = None
+            first_cessation_found = False
+            for i in range(len(aps) - 1):
+                isi = (aps[i + 1][0] - aps[i][0]) * 1000
+                all_isi.append(isi)
+                if not first_cessation_found and isi > 37.65: #is above 3 stdevs for the entire sample
+                    burst_length = (aps[i][0] - aps[0][0]) * 1000
+                    first_cessation_found = True
+            if burst_length == None:
+                burst_length = (aps[-1][0] - aps[0][0]) * 1000
+
+            # with open("all_isi.csv", "a") as outfile: #write out all isi to get mean and stdev of sample
+            #     outfile.write(",".join(str(item) for item in all_isi))
+
+            isi_cov = np.std(np.array(all_isi)) / np.mean(np.array(all_isi))
+            if len(aps) < 2:
+                isi_cov = np.nan
+                burst_length = np.nan
+            return isi_cov, burst_length
+            
+
+
         # Start of function
         frequencies = {}  # {<frequency>: sweep_num, ... }
         for i, sweep in enumerate(self.sweeps):
@@ -1011,7 +1032,9 @@ class CurrentStepsData(ExperimentData):
         if verify:
             verification_plot()
 
-        return max_frequency
+        isi_cov, burst_length = group_pv_cells(self.sweeps[max_frequency_idx])
+
+        return max_frequency, isi_cov, burst_length
 
     def get_min_instantaneous_firing_frequency(self, verify=False):
         """
@@ -1104,7 +1127,7 @@ class CurrentStepsData(ExperimentData):
         """
         return self._get_ap_threshold_1_details()[1]
 
-    def get_ahp_amplitude_and_time(self):
+    def get_ahp_amplitude(self):
         """
         Returns a tuple (AHP amp, AHP time)
         Should only be used on brief current files with one action potential
@@ -1120,61 +1143,27 @@ class CurrentStepsData(ExperimentData):
                 sweep_found = True
                 break
         if not sweep_found:
-            return np.nan, np.nan # No sweep with one action potential
-
-        # Calculate baseline
-        current = sweep_1_ap.get_drive_current()
-        t = np.array(sweep_1_ap.time_steps)
+            return np.nan # No sweep with one action potential
+        
+        smoothed = ndimage.gaussian_filter1d(sweep_1_ap.output_signal, sigma=3)        
+        v_smooth = np.array(smoothed)
         v = np.array(sweep_1_ap.output_signal)
+        t = np.array(sweep_1_ap.time_steps)
         stimulus_start, stim_end = sweep_1_ap.get_input_start_end()
-        if(np.isnan(current)):
-            current = 0#return np.nan, np.nan #Current could not be calculated
         baseline_value = baseline_voltage(t, v, stimulus_start, baseline_interval=stimulus_start)
-        # Find min and time
-        max_v_idx = np.argmax(v)
-        new_v = v[max_v_idx:]
-        new_t = t[max_v_idx:]
+        max_v_idx = np.argmax(v_smooth)
+        end_t_idx = np.asarray(t >= t[max_v_idx] + 0.1).nonzero()[0][0]
+        new_v = v_smooth[max_v_idx:end_t_idx]
         min_v_idx = np.argmin(new_v)
-        if np.asarray(new_v <= baseline_value).nonzero()[0].size == 0:
-            return 0, 0
-        dropped_to_base_idx = np.asarray(new_v <= baseline_value).nonzero()[0][0]
-        return baseline_value - new_v[min_v_idx], 1000 * (new_t[min_v_idx] - new_t[dropped_to_base_idx])
+        lowest_v_pre_ap_idx = np.argmin(v_smooth[:max_v_idx])
+        if new_v[min_v_idx] >= v_smooth[lowest_v_pre_ap_idx]: #if lowest post-ap v isn't lower than lowest pre-ap v then it's not hyperpolarization
+            return 0
+        # if np.asarray(new_v <= baseline_value).nonzero()[0].size == 0: # never dropped to baseline
+        #     return 0
+        #dropped_to_base_idx = np.asarray(new_v <= baseline_value).nonzero()[0][0]
+        ahp = baseline_value - new_v[min_v_idx]
+        return ahp
 
-        # in_dip = False
-        # first_thresh_found = False
-        # peak = []  # list of data points that are part of the first hyperpolarization
-        # dip_start_time = 0
-        # dip_start_amp = 0
-        # dip_never_found = True
-        # for idx, data_point in enumerate(zip(sweep_1_ap.time_steps, sweep_1_ap.output_signal)):
-        #     if data_point[1] > baseline_value + 30: # make sure it changed significantly from baseline
-        #         first_thresh_found = True
-        #     if in_dip:
-        #         if data_point[1] <= baseline_value:
-        #             peak.append((idx, data_point[0], data_point[1]))
-        #     elif first_thresh_found and data_point[1] <= baseline_value:
-        #         in_dip = True
-        #         peak = [(idx, *data_point)]
-        #         dip_start_time = data_point[0]
-        #         dip_start_amp = data_point[1]
-        #         dip_never_found = False
-
-        # minimum = float_info.max
-        # min_time = 0
-        # if(dip_never_found):
-        #     return baseline_value - minimum, 0
-        # # Naive way of estimating global minimum - could find better way
-        # no_decrease = 0 # to check whether the voltage hasn't decreased in a while
-        # for point in peak:
-        #     if point[2] < minimum:
-        #         no_decrease = 0
-        #         minimum = point[2]
-        #         min_time = point[1]
-        #     else:
-        #         no_decrease += 1
-        #     if no_decrease > 10: # if voltage hasn't decreased over 10 consecutive time steps assume global minimum found
-        #         break
-        # return dip_start_amp - minimum, 1000 * (min_time - dip_start_time)
 
     def get_ap_rise_time(self, verify=False):
         """

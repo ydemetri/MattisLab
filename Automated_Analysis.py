@@ -104,13 +104,50 @@ def analyze_data():
     curr_steps_ex_df["SFAn"] = curr_steps_ex_df["SFAn"].replace("None", np.nan)
     curr_steps_wt_df["SFAn"] = curr_steps_wt_df["SFAn"].replace("None", np.nan)
     curr_steps_ex_df[["SFA10","SFAn"]] = curr_steps_ex_df[["SFA10","SFAn"]].apply(pd.to_numeric)
+
+    
     curr_steps_wt_df[["SFA10","SFAn"]] = curr_steps_wt_df[["SFA10","SFAn"]].apply(pd.to_numeric)
+    
+    #plot isi cov vs burst length
+    fig, ax = plt.subplots(figsize=(10,10))
+    ax.scatter(curr_steps_wt_df['ISI_CoV'], curr_steps_wt_df['Burst_length (ms)'], color='blue', label=group1, s=110, marker="o")
+    ax.set_xlabel("ISI CoV", fontsize=48)
+    ax.set_ylabel("Burst Length (ms)", fontsize=48)
+    ax.scatter(curr_steps_ex_df['ISI_CoV'], curr_steps_ex_df['Burst_length (ms)'], color='red', label=group2, s=110, marker="^")
+    ax.spines[['right', 'top']].set_visible(False)
+    ax.tick_params(axis='both', which='major', labelsize=40)
+    #ax.set_yticks([0, 5, 10, 15, 20, 25, 30, 35, 40])
+    ax.legend(fontsize=32)
+    ax.axhline(800.0, linestyle='--', c="black")
+    ax.axvline(1.0, linestyle='--', c='black')
+    #ax.set_title("ISI CoV vs Burst Length", fontsize=48)
+    plt.tight_layout()
+    plt.savefig(path + "\\Results\\Plot_ISI_cov_vs_burst_length")
+    plt.close('all')
+
+    #plot just wt
+    # fig, ax = plt.subplots(figsize=(10,10))
+    # ax.scatter(curr_steps_wt_df['ISI_CoV'], curr_steps_wt_df['Burst_length (ms)'], color="blue", label=group1, s=110, marker="o")
+    # ax.set_xlabel("ISI Cov", fontsize=48)
+    # ax.set_ylabel("Burst Length (ms)", fontsize=48)
+    # ax.spines[['right', 'top']].set_visible(False)
+    # ax.tick_params(axis='both', which='major', labelsize=40)
+    # #ax.set_yticks([0, 5, 10, 15, 20, 25, 30, 35, 40])
+    # ax.legend(fontsize=32)
+    # ax.axhline(800.0, linestyle='--', c="black")
+    # ax.axvline(1.0, linestyle='--', c='black')
+    # #ax.set_title("ISI CoV vs Burst Length", fontsize=48)
+    # plt.tight_layout()
+    # plt.savefig(path + "\\Results\\Plot_ISI_cov_vs_burst_length_WT")
+    # plt.close('all')
+
+
 
     ahp_ex_df = pd.read_csv(bc_output_ex)
     ahp_wt_df = pd.read_csv(bc_output_wt)
     # Remove data points with no hyperpolarization
-    ahp_ex_df = ahp_ex_df.loc[~((ahp_ex_df['AHP Amplitude (mV)'] == 0) | (ahp_ex_df['AHP Amplitude (mV)'] == 'nan'))]
-    ahp_wt_df = ahp_wt_df.loc[~((ahp_wt_df['AHP Amplitude (mV)'] == 0) | (ahp_wt_df['AHP Amplitude (mV)'] == 'nan'))]
+    ahp_ex_df = ahp_ex_df.loc[~(ahp_ex_df['AHP Amplitude (mV)'] == 'nan')]
+    ahp_wt_df = ahp_wt_df.loc[~(ahp_wt_df['AHP Amplitude (mV)'] == 'nan')]
 
     res_ex_df = pd.read_csv(vc_output_ex)
     res_wt_df = pd.read_csv(vc_output_wt)
@@ -122,15 +159,25 @@ def analyze_data():
     combined_wt = pd.concat([restPot_wt_df, res_wt_df, curr_steps_wt_df, ahp_wt_df], ignore_index=True)
 
     # Add label to data (experimental vs wild type)
-    combined_ex['Group'] = '{}'.format(f2)
-    combined_wt['Group'] = '{}'.format(f1)
+    combined_ex['Group'] = '{}'.format(group2)
+    combined_wt['Group'] = '{}'.format(group1)
     full_df = pd.concat([combined_ex, combined_wt], ignore_index=True)
 
-    col_names = list(combined_ex.columns.values)
+    #REMOVE
+    # scn1a_files = ["2023_11_28_0003.abf","2023_11_28_0011.abf","2023_11_28_0015.abf","2023_11_28_0020.abf","2023_11_30_0003.abf","2023_11_30_0007.abf","2023_11_30_0015.abf","2023_11_30_0019.abf","2023_12_01_0003.abf","2023_12_01_0007.abf","2023_12_01_0011.abf","2024_01_17_0003.abf","2024_01_17_0007.abf","2024_01_17_0015.abf","2024_01_17_0019.abf","2024_01_18_0003.abf","2024_01_18_0007.abf","2024_01_18_0011.abf","2024_01_18_0015.abf","2024_01_18_0019.abf","2024_01_18_0029.abf","2024_01_18_0033.abf","2024_01_23_0003.abf","2024_01_23_0007.abf","2024_01_23_0011.abf","2024_01_23_0015.abf","2024_03_11_0002.abf","2024_03_11_0008.abf","2024_03_11_0012.abf","2024_03_11_0017.abf","2024_03_11_0022.abf","2024_03_11_0030(2).abf","2024_03_11_0034(2).abf"]
+    # geno = []
+    # for item in full_df['filename']:
+    #     if item in scn1a_files:
+    #           geno.append('Scn1a')
+    #     else:
+    #          geno.append("WT")
+    # full_df['geno'] = geno
+    #REMOVE
 
+    col_names = list(combined_ex.columns.values)
     #Change numbers depending on properties being checked
     types = ["Intrinsic Property" for i in range(5)]
-    types += ["Repetitive AP Property" for i in range(4)]
+    types += ["Repetitive AP Property" for i in range(6)]
     types += ["Individual AP Property" for i in range(7)]
     type_idx = 0
 
@@ -139,7 +186,7 @@ def analyze_data():
     stat_cols = ["Measurement", "Measurement Type", "{}_mean".format(f2), "{}_stderr".format(f2), "{}_n".format(f2),
             "{}_mean".format(f1), "{}_stderr".format(f1), "{}_n".format(f1), "p-value"]
     for col in col_names:
-            if col != "filename" and col != "Group":
+            if col != "filename" and col != "Group" and col != 'geno':
                 ex = combined_ex[col].dropna()
                 wt = combined_wt[col].dropna()
                 ex_se = 0
@@ -156,13 +203,21 @@ def analyze_data():
                     plt.close('all')
                     plt.figure()
                     fig, ax = plt.subplots(figsize=(8,10))
-                    ax.set_ylabel("{}".format(col), fontsize=48)
-                    ax.errorbar('', ex.mean(), yerr=ex_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
-                    sns.stripplot(data=full_df, x='Group', y='{}'.format(col), hue='Group', palette={'{}'.format(f1) : 'blue', '{}'.format(f2) : 'red'}, legend=None, ax=ax, jitter=0.2, size=10)
-                    ax.errorbar('{}'.format(f2), ex.mean(), yerr=ex_se, fmt="_", color="black", capsize=10, markersize=50, markeredgewidth=6, zorder=5)
-                    ax.errorbar('{}'.format(f1), wt.mean(), yerr=wt_se, fmt="_", color="black", capsize=10, markersize=50, markeredgewidth=6, zorder=5)
-                    ax.set_box_aspect(2/1)
-                    ax.errorbar(' ', wt.mean(), yerr=wt_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
+                    #ax.errorbar('', ex.mean(), yerr=ex_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
+                    g = sns.relplot(x="Group", y="{}".format(col), hue="Group", data=full_df, palette={group1 : 'blue', group2 : 'red'}, legend=False, aspect=1/2, height=10, size='Group', sizes={group1 : 150, group2 : 150})#, style='geno' markers={'WT' : 'o', 'Scn1a' : '^'})
+                    for ax in g.axes.flat:
+                        for points in ax.collections:
+                            vertices = points.get_offsets().data
+                            if len(vertices) > 0:
+                                vertices[:, 0] += np.random.uniform(-0.3, 0.3, vertices.shape[0])
+                                points.set_offsets(vertices)
+                        xticks = ax.get_xticks()
+                        ax.set_xlim(xticks[0] - 0.5, xticks[-1] + 0.5) # the limits need to be moved to show all the jittered dots
+                    #sns.stripplot(data=full_df, x='Group', y='{}'.format(col), hue='Group', palette={'{}'.format(f1) : 'blue', '{}'.format(f2) : 'red'}, legend=None, ax=ax, jitter=0.2, size=10)
+                    ax.errorbar('{}'.format(group2), ex.mean(), yerr=ex_se, fmt="_", color="black", capsize=10, markersize=50, markeredgewidth=6, zorder=5)
+                    ax.errorbar('{}'.format(group1), wt.mean(), yerr=wt_se, fmt="_", color="black", capsize=10, markersize=50, markeredgewidth=6, zorder=5)
+                    #ax.set_box_aspect(2/1)
+                    #ax.errorbar(' ', wt.mean(), yerr=wt_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
                     if col not in ['AP Threshold (mV)', 'Vm (mV)', "Velocity Downstroke (mV_per_ms)"]:
                         ax.set_ylim(bottom=0)
                     else:
@@ -170,13 +225,14 @@ def analyze_data():
                     ax.spines[['right', 'top']].set_visible(False)
                     ax.set(xlabel=None)
                     plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)                     
-                    plt.xticks(ticks=[0,1,2,3], labels=['', group2, group1, '  '], fontsize=40)
+                    #plt.xticks(ticks=[0,1,2,3], labels=['', group2, group1, '  '], fontsize=40)
                     ax.tick_params(axis='both', which='major', labelsize=40)
                     # if col == 'Max Steady-state (Hz)':
                     #      ax.set_yticks([0, 20, 40, 60, 80])
                     # if col == '# APs, 1st 100 ms':
                     #      ax.set_yticks([0, 5, 10, 15])
                     ax.xaxis.set_tick_params(rotation=45)
+                    ax.set_ylabel("{}".format(col), fontsize=48)
                     plt.tight_layout()
                     plt.savefig(path + "\\Results\\Plot_{}".format(col))
                     plt.close('all')

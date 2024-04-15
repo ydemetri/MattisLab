@@ -17,7 +17,6 @@ def analyze_bc(ABF_LOCATION, ANALYSIS_OUTPUT_FILE):
 
     # Gathering data from the abf files
     ahp_output = {}
-    ahp_time_output = {}
 
     for filepath in abf_files:
         abf = ABF(filepath)
@@ -28,7 +27,7 @@ def analyze_bc(ABF_LOCATION, ANALYSIS_OUTPUT_FILE):
 
         # print('{} contains {} sweeps'.format(filename, len(experiment.sweeps)))
 
-        ahp_output[filename], ahp_time_output[filename] = experiment.get_ahp_amplitude_and_time()
+        ahp_output[filename] = experiment.get_ahp_amplitude()
 
 
     # Writing the additional analysis to output file
