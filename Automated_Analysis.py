@@ -163,7 +163,8 @@ def analyze_data():
     combined_wt['Group'] = '{}'.format(group1)
     full_df = pd.concat([combined_ex, combined_wt], ignore_index=True)
 
-    #REMOVE
+    # Use when comparing groups containing both wt and scn1a (i.e. continuous firing vs bursting)
+    # Will have to make custom list with file names belonging to scn1a or wt so that you know which is which. Example in line below from PV cells in MS
     # scn1a_files = ["2023_11_28_0003.abf","2023_11_28_0011.abf","2023_11_28_0015.abf","2023_11_28_0020.abf","2023_11_30_0003.abf","2023_11_30_0007.abf","2023_11_30_0015.abf","2023_11_30_0019.abf","2023_12_01_0003.abf","2023_12_01_0007.abf","2023_12_01_0011.abf","2024_01_17_0003.abf","2024_01_17_0007.abf","2024_01_17_0015.abf","2024_01_17_0019.abf","2024_01_18_0003.abf","2024_01_18_0007.abf","2024_01_18_0011.abf","2024_01_18_0015.abf","2024_01_18_0019.abf","2024_01_18_0029.abf","2024_01_18_0033.abf","2024_01_23_0003.abf","2024_01_23_0007.abf","2024_01_23_0011.abf","2024_01_23_0015.abf","2024_03_11_0002.abf","2024_03_11_0008.abf","2024_03_11_0012.abf","2024_03_11_0017.abf","2024_03_11_0022.abf","2024_03_11_0030(2).abf","2024_03_11_0034(2).abf"]
     # geno = []
     # for item in full_df['filename']:
@@ -172,7 +173,6 @@ def analyze_data():
     #     else:
     #          geno.append("WT")
     # full_df['geno'] = geno
-    #REMOVE
 
     col_names = list(combined_ex.columns.values)
     #Change numbers depending on properties being checked
@@ -220,8 +220,10 @@ def analyze_data():
                     #ax.errorbar(' ', wt.mean(), yerr=wt_se, fmt="", color="white") #plots nothing to reduce space between two groups on the plot
                     if col not in ['AP Threshold (mV)', 'Vm (mV)', "Velocity Downstroke (mV_per_ms)"]:
                         ax.set_ylim(bottom=0)
-                    else:
-                        ax.set_ylim(top=0)
+                    # elif col == 'AP Threshold (mV)':
+                    #     ax.set_ylim(top=-30)
+                    # else:
+                    #     ax.set_ylim(top=0)
                     ax.spines[['right', 'top']].set_visible(False)
                     ax.set(xlabel=None)
                     plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)                     
